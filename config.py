@@ -3,6 +3,8 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or '73218d6a-6586-420c-870e-46ee72b67634'
+    SECRET_API_KEY = os.environ.get('SECRET_API_KEY') or '0a37511d-be7d-4fdd-ab17-28b6c659d763'
+    AUTH_API_RANGE = 20
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     FLASKY_MAIL_SUBJECT_PREFIX = '[AuthSystem]'

@@ -1,7 +1,7 @@
 from . import db
 import hashlib,json
 from datetime import datetime
-from flask import current_app,request
+from flask import current_app,request,jsonify
 from flask_login import UserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
@@ -16,6 +16,7 @@ class User(UserMixin,db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
     email = db.Column(db.String(64),unique=True,index=True)
+    username = db.Column(db.String(64),unique=True,index=True)
     confirmed = db.Column(db.Boolean,default=True)
     create_at = db.Column(db.DateTime)
     last_seen = db.Column(db.DateTime,default=datetime.now)
@@ -25,14 +26,23 @@ class User(UserMixin,db.Model):
                                  backref=db.backref('host',lazy='joined'),
                                  lazy='dynamic',
                                  cascade='all,delete-orphan')
-
+    #返回静态数据方法
+    def to_dic(self):
+        dic = {
+            id:self.id,
+            email:self.email,
+            username:self.username,
+            confirmed:self.confirmed,
+            create_at:self.create_at,
+            last_seen:self.last_seen,
+        }
+        return dic
     def __repr__(self):
         return "<user:%s>" % self.email
     #generate_confi
     def generate_confirmation_token(self,expiration=3600):
-        username = self.email.split('@')[0]
         s = Serializer(current_app.config['SECRET_KEY'],expires_in = expiration)
-        return s.dumps({'confirm_username':username}).decode('utf-8')
+        return s.dumps({'confirm_username':self.username}).decode('utf-8')
     @staticmethod
     def verify_auth_token(username,token):
         s = Serializer(current_app.config['SECRET_KEY'])

@@ -2,12 +2,14 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_moment import Moment
+from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from config import config
 
 mail = Mail()
 moment = Moment()
 db = SQLAlchemy()
+api = Api()
 login_manager = LoginManager()
 login_manager.session_protection = "strong"
 login_manager.login_view = 'auth.login'
@@ -22,9 +24,10 @@ def create_app(config_name):
     mail.init_app(app)
     moment.init_app(app)
     db.init_app(app)
+    api.init_app(app)
 
-    from .api_1_0 import api as auth_blueprint
-    app.register_blueprint(auth_blueprint,
+    from .api_1_0 import api as api_blueprint
+    app.register_blueprint(api_blueprint,
                           url_prefix='/apiv1')
 
     return app
