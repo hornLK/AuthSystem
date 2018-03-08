@@ -21,8 +21,8 @@ class DevelopmentConfig(Config):
 
     AUTHSYSTEM_MAIL_SUBJECT_PREFIX = '[DevAuthSystem]'
     FLASKY_ADMIN = 'liukaiqiang@miaozhen.com'
-    AUTHSYSTEM_MAIL_SENDER = 'AuthSystem Admin <liukaiqiang@pdmi.cn>'
-    MAIL_SERVER = 'smtp.pdmi.cn'
+    AUTHSYSTEM_MAIL_SENDER = 'AuthSystem Admin <liukaiqiang@miaozhen.com>'
+    MAIL_SERVER = 'smtp.miaozhen.com'
     MAIL_PORT = 25
     MAIL_USER_TLS = False
     MAIL_USERNAME = 'liukaiqiang@miaozhen.com'

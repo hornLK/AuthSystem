@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 67c79aa93076
+Revision ID: 4e4695761303
 Revises: 
-Create Date: 2018-03-07 16:29:48.641487
+Create Date: 2018-03-08 17:33:10.313671
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '67c79aa93076'
+revision = '4e4695761303'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -21,6 +21,7 @@ def upgrade():
     op.create_table('hostgroup',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('produceName', sa.String(length=64), nullable=True),
+    sa.Column('moMent', sa.String(length=128), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('produceName')
     )
@@ -29,23 +30,27 @@ def upgrade():
     sa.Column('roleName', sa.String(length=64), nullable=True),
     sa.Column('pubKey', sa.String(length=64), nullable=True),
     sa.Column('priKey', sa.String(length=64), nullable=True),
+    sa.Column('moMent', sa.String(length=128), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_roles_roleName'), 'roles', ['roleName'], unique=True)
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('email', sa.String(length=64), nullable=True),
+    sa.Column('username', sa.String(length=64), nullable=True),
     sa.Column('confirmed', sa.Boolean(), nullable=True),
     sa.Column('create_at', sa.DateTime(), nullable=True),
     sa.Column('last_seen', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_table('authlog',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('authTime', sa.DateTime(), nullable=True),
     sa.Column('returnInfo', sa.String(length=32), nullable=True),
+    sa.Column('returnToken', sa.String(length=128), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -79,6 +84,7 @@ def downgrade():
     op.drop_index(op.f('ix_hosts_hostIP'), table_name='hosts')
     op.drop_table('hosts')
     op.drop_table('authlog')
+    op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_index(op.f('ix_roles_roleName'), table_name='roles')

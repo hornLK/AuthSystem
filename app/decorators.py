@@ -11,8 +11,8 @@ def auth_api_valid(data):
         time_span = float(time_span)
         if (time.time()-time_span) > current_app.config["AUTH_API_RANGE"]:
             return False
-        hash_obj = hashlib.md5()
-        hash_obj.update("%s|%f" % (current_app.config["SECRET_API_KEY"],time_span))
+        secret_data = "%s|%f" % (current_app.config["SECRET_API_KEY"],time_span)
+        hash_obj = hashlib.md5(secret_data.encode("utf-8"))
         if hash_obj.hexdigest() == encryption:
             return True
         else:
@@ -25,12 +25,10 @@ def api_auth(request):
     """
         用于验证api的装饰器
     """
-    print("+++hehda")
-    print(dir(request))
     def wrapper(func):
+        @wraps(func)
         def _wrapper():
-            print(dir(request))
-            security_key = request.headers.get("HTTP_SECRETKEY",None)
+            security_key = request.headers.get("Http-Secretkey",None)
             if not security_key:
                 return jsonify({'status':"Unauthorized"})
             if not auth_api_valid(security_key):
