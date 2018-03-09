@@ -5,24 +5,42 @@ from . import api
 from flask_restful import Resource,reqparse
 from ..decorators import api_auth
 
-@api.route('/user/userlit/',methods=['GET'])
+#获取用户列表
+@api.route('/user/list/',methods=['GET'])
 @api_auth(request)
-def get_users():
+def ShowAllUsers():
     users = User.query.all()
-    result=[user.to_dic for user in users]
-    return jsonify(result)
+    if users:
+        result=[user.to_dict() for user in users]
+        return jsonify(result)
 
-
-@api.route('/token/achieve_token/',methods=['POST'])
+#用户登录申请token
+'''
+request:
+    headers = {'content-type': 'application/json',"Http-Secretkey":xxx}
+    #需要添加认证密钥
+    data = {"username":"liukaiqiang"}
+return:
+    {
+        "token":"xxx" ,
+        "hosts":[
+            {
+                ...
+            }
+        ]
+    }
+'''
+@api.route('/login/apply/',methods=['POST'])
 @api_auth(request)
-def achieve_token():
+def ApplyTokenHosts():
     _,username=request.data.decode("utf-8").split("=")
-    print(username)
     userObj = User.query.filter_by(username=username).first()
-    re_token = userObj.generate_confirmation_token(20)
-    return jsonify({"token":re_token}) ,200
+    result = userObj.generate_confirmation_token()
+    return jsonify({"token":result[0],"hosts":result[1]}) ,200
 
-@api.route('/test/api_auth/',methods=['GET'])
+
+#测试api验证用例
+@api.route('/test/authapi/',methods=['GET'])
 @api_auth(request)
 def auth_api_test():
     return jsonify({"status":"ok"})

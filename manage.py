@@ -1,7 +1,9 @@
 import os
 
 from app import create_app,db,mail
-from app.models import User,Role, Hosts,HostGroup,AuthLog
+from app.models import (User,Role, Hosts,
+                        HostGroup,AuthLog,
+                        UserToHosts)
 from flask_script import Manager,Shell
 from flask_migrate import Migrate,MigrateCommand
 
@@ -11,7 +13,9 @@ migrate = Migrate(app,db)
 
 def make_shell_context():
     return dict(
-        app = app,db = db,mail = mail,User = User,Role=Role,Hosts=Hosts,HostGroup=HostGroup,AuthLog=AuthLog)
+        app = app,db = db,mail = mail,User = User,
+        Role=Role,Hosts=Hosts,HostGroup=HostGroup,
+        AuthLog=AuthLog,UserToHosts=UserToHosts)
 manager.add_command("shell",
                     Shell(make_context=make_shell_context)
                    )

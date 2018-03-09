@@ -12,9 +12,6 @@ def sent_test(url,api_key):
     print(res.text)
 
 if __name__ == "__main__":
-    #错误key
-    #api_key = "0a37511d-be7d-4fdd-ab17-28b6c659d764"
-    #正确key
     api_key = "0a37511d-be7d-4fdd-ab17-28b6c659d763"
-    url = "http://192.168.220.3:8890/apiv1/test/authapi/"
+    url = "http://192.168.220.3:8890/apiv1/user/list/"
     sent_test(url,api_key)

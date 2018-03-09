@@ -14,5 +14,5 @@ def sent_test(url,api_key):
 
 if __name__ == "__main__":
     api_key = "0a37511d-be7d-4fdd-ab17-28b6c659d763"
-    url = "http://192.168.138.3:8890/apiv1/token/achieve_token/"
+    url = "http://192.168.220.3:8890/apiv1/login/apply/"
     sent_test(url,api_key)

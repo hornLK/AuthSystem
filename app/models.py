@@ -1,13 +1,15 @@
 from . import db
 import hashlib,json
-import datetime
+import datetime,time
 from flask import current_app,request,jsonify
 from flask_login import UserMixin
 from .email import send_email
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-
+from .utils import hashlib_token_serializer as Serializer
 
 class UserToHosts(db.Model):
+    '''
+        用户与主机权限关系表
+    '''
     __tablename__ = "usertohosts"
     user_id = db.Column(db.Integer,db.ForeignKey("users.id"),primary_key=True)
     host_id = db.Column(db.Integer,db.ForeignKey("hosts.id"),primary_key=True)
@@ -16,61 +18,99 @@ class UserToHosts(db.Model):
     users = db.relationship("User",back_populates="hosts")
 
 class User(UserMixin,db.Model):
+    '''
+    用户表
+    方法:
+        to_dic:
+            return :{
+                "id":id,
+                "email":email,
+                "username":username,
+                "confirmed":confirmed,
+                "create_at":create_at,
+                "last_seen":last_seen
+            }   #返回用户对象数据的字典
+
+        generate_confirmed_token:
+            return:[
+                "token":token,
+                "hosts":[...]
+                ]#返回用户的token和可登录机器的列表
+        confirmed:
+            #禁止用户登录方法
+
+    '''
+
     __tablename__ = "users"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    #邮箱
     email = db.Column(db.String(64),unique=True,index=True)
+    #用户名
     username = db.Column(db.String(64),unique=True,index=True)
+    #是否可以登录跳板机，默认为True
     confirmed = db.Column(db.Boolean,default=True)
+    #用户创建时间
     create_at = db.Column(db.DateTime)
-    last_seen = db.Column(db.DateTime)
+    #外键关联log表记录用户认证日志
     authlog = db.relationship("AuthLog",backref='user')
-    """
-    userTohost = db.relationship("UserToHosts",
-                                 foreign_keys=[UserToHosts.host_id],
-                                 backref=db.backref('host',lazy='dynamic'),
-                                 lazy='dynamic',
-                                 cascade='all,delete-orphan')
-    """
+    #制定关联表关系
     hosts = db.relationship("UserToHosts",back_populates="users")
     #返回静态数据方法
-    def to_dic(self):
-        dic = {
+    def to_dict(self):
+        to_dict = {
             "id":self.id,
             "email":self.email,
             "username":self.username,
             "confirmed":self.confirmed,
             "create_at":self.create_at,
-            "last_seen":self.last_seen,
         }
-        return dic
+        return to_dict
     def __repr__(self):
         return "<user:%s>" % self.email
-    #generate_confi
-    def generate_confirmation_token(self,expiration=3600):
-        s = Serializer(current_app.config['SECRET_KEY'],expires_in = expiration)
-        re_token = s.dumps({'confirm_username':self.username}).decode('utf-8')[:16]
-        send_email(self.email,'跳板机登录验证token','auth/email/user_token',user=self.username,token=re_token)
+
+    #生成返回token以及服务器列表信息
+    def generate_confirmation_token(self):
+
+        time_stamp = time.time()
+        return_token = Serializer.hashlib_generate_token(
+            current_app.config['SECRET_KEY'],
+            time_stamp,
+            self.username
+        )
+        #发送日志方法
+        send_email(self.email,
+                   '跳板机登录验证token',
+                   'auth/email/user_token',
+                   user=self.username,token=return_token)
+
+        #生成主机列表
+        hosts = [host.hosts.to_dict() for host in self.hosts if self.hosts ]
+       #定义用户日志信息 
         write_log = {"user_id":self.id,
                      "authTime":datetime.datetime.now(),
-                     "returnInfo":"token generated",
-                     "returnToken":re_token
+                     "returnInfo":"token-ok",
+                     "returnToken":return_token
                     }
+        #log
         authlog =  AuthLog(**write_log)
+        print(authlog)
         db.session.add(authlog)
         db.session.commit()
-        return re_token
+        return [return_token,hosts]
 
+    #远程认证用户方法
     @staticmethod
-    def verify_auth_token(username,token):
-        s = Serializer(current_app.config['SECRET_KEY'])
-        try:
-            data = s.loads(token)
-        except:
-            return None
-        if data.get("confirm_username")==username:
-            return username
-        else:return None
-    #ban user login
+    def verify_auth_token(username,token,time_stamp):
+        s = Serializer.hashlib_check_token(
+            token,
+            current_app.config['SECRET_KEY'],
+            time_stamp,
+            username
+        )
+        if s:
+            return True
+        else:False
+    #禁止用户登录操作
     def confirm_login(self,action):
         if action:
             self.confirmed = True
@@ -79,52 +119,98 @@ class User(UserMixin,db.Model):
             db.session.add(self)
 
 class Hosts(db.Model):
+    #主机表
+    '''
+    方法：
+        to_dict:
+            return:{
+                "id":1,
+                "hostName":"host1",
+                "hostIP":"192.168.1.1",
+                "hostPort":22,
+                "hostGroup":"测试平台"
+            }
+    '''
     __tablename__ = "hosts"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    #主机名
     hostName = db.Column(db.String(64),unique=True,index=True)
+    #主机ip
     hostIP = db.Column(db.String(64),index=True)
+    #ssh连接port
     hostPort = db.Column(db.Integer,default=22)
+    #关联到主机组
     hostGroup_id = db.Column(db.Integer,db.ForeignKey('hostgroup.id'))
-    """
-    hostTouser = db.relationship("UserToHosts",
-                                 foreign_keys=[UserToHosts.user_id],
-                                 backref=db.backref('user',lazy='joined'),
-                                 lazy='dynamic',
-                                 cascade='all,delete-orphan')
-    """
     users = db.relationship("UserToHosts",back_populates="hosts")
+    #主机信息
+    def to_dict(self):
+        to_dict={
+            "id":self.id,
+            "hostName":self.hostName,
+            "hostIP":self.hostIP,
+            "hostPort":self.hostPort,
+            "hostGroup":self.hostgroup.produceName
+        }
+        return to_dict
 
     def __repr__(self):
         return "<name-ip:%s-%s>" % (self.hostName,self.hostIP)
 
 class HostGroup(db.Model):
+    #主机组表
+    '''
+    方法：
+        updateName:
+            return:
+                #完成主机组名更新操作
+    '''
     __tablename__ = "hostgroup"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    #业务线名
     produceName = db.Column(db.String(64),unique=True)
+    #业务线描述
     moMent = db.Column(db.String(128))
     hosts = db.relationship("Hosts",backref="hostgroup")
 
     def updateName(self):
         pass
     def __repr__(self):
-        return "produceName:%s" % ProduceName
+        return "produceName:%s" % self.produceName
 
 class Role(db.Model):
+    #角色表，也就是业务机登录用户名
+    '''
+    方法：
+        updatePubKey:
+            return:
+                #更新公钥并通过ansible进行业务主机上公钥的更新
+        updatePriKey:
+            return:
+                #更新私钥通过ansible进行跳板机上私钥的更新
+    '''
     __tablename__ = "roles"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    #角色名
     roleName = db.Column(db.String(64),unique=True,index=True)
-    pubKey = db.Column(db.String(64))
-    priKey = db.Column(db.String(64))
+    #存储公钥
+    pubKey = db.Column(db.String(256))
+    #存储私钥
+    priKey = db.Column(db.String(256))
+    #角色描述
     moMent = db.Column(db.String(128))
-    hostAndhost = db.relationship("UserToHosts",backref='role')
+    userTohost = db.relationship("UserToHosts",backref='role')
 
     def updatePubKey():
         pass
     def updatePriKey():
         pass
 
+    def __repr__(self):
+        return "roleName:%s" % self.roleName
+
 
 class AuthLog(db.Model):
+    #认证日志表
     __tablename__ = "authlog"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
     user_id = db.Column(db.Integer,db.ForeignKey("users.id"))

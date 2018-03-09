@@ -8,13 +8,11 @@ def sent_test(url,api_key):
     encryption = hash_obj.hexdigest()
     send_data = encryption+"|"+str(time_span)
     headers = {'content-type': 'application/json',"Http-Secretkey":send_data}
-    res = requests.get(url,headers=headers)
+    data = {"username":"liukaiqiang","host":"192.168.220.3"}
+    res = requests.post(url,headers=headers,data=data)
     print(res.text)
 
 if __name__ == "__main__":
-    #错误key
-    #api_key = "0a37511d-be7d-4fdd-ab17-28b6c659d764"
-    #正确key
     api_key = "0a37511d-be7d-4fdd-ab17-28b6c659d763"
-    url = "http://192.168.220.3:8890/apiv1/test/authapi/"
+    url = "http://192.168.220.3:8890/apiv1/auth/login_role/"
     sent_test(url,api_key)
