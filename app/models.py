@@ -27,8 +27,7 @@ class User(UserMixin,db.Model):
                 "email":email,
                 "username":username,
                 "confirmed":confirmed,
-                "create_at":create_at,
-                "last_seen":last_seen
+                "create_at":create_at
             }   #返回用户对象数据的字典
 
         generate_confirmed_token:
@@ -44,9 +43,13 @@ class User(UserMixin,db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
     #邮箱
-    email = db.Column(db.String(64),unique=True,index=True)
+    email = db.Column(db.String(64),unique=True,index=True,nullable=False)
     #用户名
-    username = db.Column(db.String(64),unique=True,index=True)
+    username = db.Column(db.String(64),unique=True,index=True,nullable=False)
+    #电话号码
+    phonenumber = db.Column(db.Integer)
+    #微信号
+    weixinnumber = db.Column(db.Integer)
     #是否可以登录跳板机，默认为True
     confirmed = db.Column(db.Boolean,default=True)
     #用户创建时间
@@ -155,6 +158,21 @@ class Hosts(db.Model):
 
     def __repr__(self):
         return "<name-ip:%s-%s>" % (self.hostName,self.hostIP)
+
+RoomHostGroup = db.Table('roomhostgroup',
+                        db.Column('root_id',db.Integer,db.ForeignKey('rooms.id')),
+                        db.Column('hostgroup_id',db.Integer,db.ForeignKey('hostgroup.id'))
+                        )
+class Room(db.Model):
+    #机房表
+    __tablename__ = "rooms"
+    id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    rootName = db.Column(db.String(64),unique=True)
+    hostgroups = db.relationship("hostgroup",
+                                secondary=RoomHostGroup,
+                                 backref=db.backref('room',lazy='dynamic'),
+                                 lazy='dynamic'
+                                )
 
 class HostGroup(db.Model):
     #主机组表
