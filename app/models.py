@@ -84,7 +84,7 @@ class User(UserMixin,db.Model):
                    user=self.username,token=return_token)
 
         #生成主机列表
-        hosts = [host.hosts.to_dict() for host in self.hosts if self.hosts ]
+        hosts = [{"hostInfo":host.hosts.to_dict(),"role":host.role.roleName,"username":self.username} for host in self.hosts if self.hosts ]
        #定义用户日志信息 
         write_log = {"user_id":self.id,
                      "authTime":datetime.datetime.now(),
