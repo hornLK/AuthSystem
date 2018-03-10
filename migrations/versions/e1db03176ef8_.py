@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 028500bdb389
+Revision ID: e1db03176ef8
 Revises: 
-Create Date: 2018-03-10 05:44:13.074755
+Create Date: 2018-03-10 08:05:24.152386
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '028500bdb389'
+revision = 'e1db03176ef8'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -36,9 +36,10 @@ def upgrade():
     op.create_index(op.f('ix_roles_roleName'), 'roles', ['roleName'], unique=True)
     op.create_table('rooms',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('rootName', sa.String(length=64), nullable=True),
+    sa.Column('roomName', sa.String(length=64), nullable=True),
+    sa.Column('moMent', sa.String(length=256), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('rootName')
+    sa.UniqueConstraint('roomName')
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -56,7 +57,6 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('authTime', sa.DateTime(), nullable=True),
-    sa.Column('returnInfo', sa.String(length=32), nullable=True),
     sa.Column('returnToken', sa.String(length=128), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')

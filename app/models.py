@@ -17,6 +17,22 @@ class UserToHosts(db.Model):
     hosts = db.relationship("Hosts",back_populates="users")
     users = db.relationship("User",back_populates="hosts")
 
+class UserKey(db.Model):
+    #用户跳板机上的key
+    __tablename__ = "userkeys"
+    id = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    #公钥
+    userPubkey = db.Column(db.String(256))
+    #私钥
+    userPrikey = db.Column(db.String(256))
+    #密钥更新时间
+    keyUpdate = db.Column(db.DateTime)
+    user_id = db.Column(db.Integer,db.ForeignKey("users.id"))
+    user = db.relationship("User",back_populates="userkey")
+
+    def updateKey(self):
+        pass
+
 class User(UserMixin,db.Model):
     '''
     用户表
@@ -49,9 +65,11 @@ class User(UserMixin,db.Model):
     #电话号码
     phonenumber = db.Column(db.Integer)
     #微信号
-    weixinnumber = db.Column(db.Integer)
+    weixinnumber = db.Column(db.String(32))
     #是否可以登录跳板机，默认为True
     confirmed = db.Column(db.Boolean,default=True)
+    #用户key
+    userkey = db.relationship("UserKey",back_populates="user")
     #用户创建时间
     create_at = db.Column(db.DateTime)
     #外键关联log表记录用户认证日志
@@ -64,8 +82,11 @@ class User(UserMixin,db.Model):
             "id":self.id,
             "email":self.email,
             "username":self.username,
+            "phonenumber":self.phonenumber,
+            "weixinnumber":self.weixinnumber,
             "confirmed":self.confirmed,
             "create_at":self.create_at,
+            "hostcount":self.hosts.__len__()
         }
         return to_dict
     def __repr__(self):
@@ -91,7 +112,6 @@ class User(UserMixin,db.Model):
        #定义用户日志信息 
         write_log = {"user_id":self.id,
                      "authTime":datetime.datetime.now(),
-                     "returnInfo":"token-ok",
                      "returnToken":return_token
                     }
         #log
@@ -167,8 +187,9 @@ class Room(db.Model):
     #机房表
     __tablename__ = "rooms"
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
-    rootName = db.Column(db.String(64),unique=True)
-    hostgroups = db.relationship("hostgroup",
+    roomName = db.Column(db.String(64),unique=True)
+    moMent = db.Column(db.String(256))
+    hostgroups = db.relationship("HostGroup",
                                 secondary=RoomHostGroup,
                                  backref=db.backref('room',lazy='dynamic'),
                                  lazy='dynamic'
@@ -222,6 +243,12 @@ class Role(db.Model):
         pass
     def updatePriKey():
         pass
+    def to_dict(self):
+        to_dict={
+            "role_id":self.id,
+            "role_name":self.roleName
+        }
+        return to_dict
 
     def __repr__(self):
         return "roleName:%s" % self.roleName
@@ -233,5 +260,4 @@ class AuthLog(db.Model):
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
     user_id = db.Column(db.Integer,db.ForeignKey("users.id"))
     authTime = db.Column(db.DateTime)
-    returnInfo = db.Column(db.String(32))
     returnToken = db.Column(db.String(128))

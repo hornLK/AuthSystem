@@ -28,7 +28,7 @@ def api_auth(request):
     def wrapper(func):
         @wraps(func)
         def _wrapper():
-            security_key = request.headers.get("Http-Secretkey",None)
+            security_key = request.headers.get("X-Http-Secretkey",None)
             if not security_key:
                 return jsonify({'status':"Unauthorized"})
             if not auth_api_valid(security_key):

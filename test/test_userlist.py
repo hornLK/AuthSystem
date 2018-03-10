@@ -7,7 +7,7 @@ def sent_test(url,api_key):
     hash_obj = hashlib.md5(secret_data.encode("utf-8"))
     encryption = hash_obj.hexdigest()
     send_data = encryption+"|"+str(time_span)
-    headers = {'content-type': 'application/json',"X-Http-Secretkey":send_data}
+    headers = {'content-type': 'application/json',"Http-Secretkey":send_data}
     data = {"username":"liukaiqiang"}
     res = requests.post(url,headers=headers,data=data)
     print(res.text)
