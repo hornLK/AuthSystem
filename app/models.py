@@ -77,8 +77,8 @@ class User(UserMixin,db.Model):
     #制定关联表关系
     hosts = db.relationship("UserToHosts",back_populates="users")
     #返回静态数据方法
-    def to_dict(self):
-        to_dict = {
+    def to_json(self):
+        to_json = {
             "id":self.id,
             "email":self.email,
             "username":self.username,
@@ -88,7 +88,7 @@ class User(UserMixin,db.Model):
             "create_at":self.create_at,
             "hostcount":self.hosts.__len__()
         }
-        return to_dict
+        return to_json
     def __repr__(self):
         return "<user:%s>" % self.email
 
@@ -108,7 +108,7 @@ class User(UserMixin,db.Model):
                    user=self.username,token=return_token)
 
         #生成主机列表
-        hosts = [{"hostInfo":host.hosts.to_dict(),"role":host.role.roleName,"username":self.username} for host in self.hosts if self.hosts ]
+        hosts = [{"hostInfo":host.hosts.to_json(),"role":host.role.roleName,"username":self.username} for host in self.hosts if self.hosts ]
        #定义用户日志信息 
         write_log = {"user_id":self.id,
                      "authTime":datetime.datetime.now(),
@@ -145,7 +145,7 @@ class Hosts(db.Model):
     #主机表
     '''
     方法：
-        to_dict:
+        to_json:
             return:{
                 "id":1,
                 "hostName":"host1",
@@ -166,15 +166,15 @@ class Hosts(db.Model):
     hostGroup_id = db.Column(db.Integer,db.ForeignKey('hostgroup.id'))
     users = db.relationship("UserToHosts",back_populates="hosts")
     #主机信息
-    def to_dict(self):
-        to_dict={
+    def to_json(self):
+        to_json={
             "id":self.id,
             "hostName":self.hostName,
             "hostIP":self.hostIP,
             "hostPort":self.hostPort,
             "hostGroup":self.hostgroup.produceName
         }
-        return to_dict
+        return to_json
 
     def __repr__(self):
         return "<name-ip:%s-%s>" % (self.hostName,self.hostIP)
@@ -243,12 +243,12 @@ class Role(db.Model):
         pass
     def updatePriKey():
         pass
-    def to_dict(self):
-        to_dict={
+    def to_json(self):
+        to_json={
             "role_id":self.id,
             "role_name":self.roleName
         }
-        return to_dict
+        return to_json
 
     def __repr__(self):
         return "roleName:%s" % self.roleName
