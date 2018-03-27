@@ -3,7 +3,7 @@ import hashlib,json
 import datetime,time
 from flask import current_app,request,jsonify
 from flask_login import UserMixin
-from .email import send_email
+#from .email import send_email
 from .utils import hashlib_token_serializer as Serializer
 
 class UserToHosts(db.Model):
@@ -102,10 +102,10 @@ class User(UserMixin,db.Model):
             self.username
         )
         #发送日志方法
-        send_email(self.email,
-                   '跳板机登录验证token',
-                   'auth/email/user_token',
-                   user=self.username,token=return_token)
+        #send_email(self.email,
+        #           '跳板机登录验证token',
+        #           'auth/email/user_token',
+        #           user=self.username,token=return_token)
 
         #生成主机列表
         hosts = [{"hostInfo":host.hosts.to_json(),"role":host.role.roleName,"username":self.username} for host in self.hosts if self.hosts ]

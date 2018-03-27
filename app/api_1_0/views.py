@@ -37,7 +37,10 @@ def EditUsers():
             user_obj.weixinnumber=int(data.get("weixinnumber"))
             user_obj.confirmed = data.get("confirmed")
             db.session.add(user_obj)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
             return jsonify({"status":True})
         except Exception as e:
             print(e)
@@ -53,7 +56,10 @@ def EditUserRole():
                                                 UserToHosts.host_id==int(data.get("host_id")))).first()
         userrole_obj.role_id = int(data.get("role_id"))
         db.session.add(userrole_obj)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
         return jsonify({"status":True})
     except Exception as e:
         print(e)
@@ -107,6 +113,7 @@ def ShowPageUsers():
             "prev":prev_page,
             "next":next_page,
             "current":page,
+            "total":pagination.total,
             "page_iter":[page_num for page_num in range(1,pagination.pages+1)]
         })
     except Exception as e:
@@ -203,6 +210,24 @@ def ShowPageUserOutHosts():
         print(e)
         return jsonify({"status":False})
 
+@api.route('/auths/user/authshosts/',methods=['POST'])
+@api_auth(request)
+def AuthHosts():
+    try:
+        data=json.loads(request.data.decode("utf-8"))
+        user_id=int(data.get("user_id"))
+        for k,v in data.get("host_role").items():
+            role_id = Role.query.filter_by(roleName=v).first().id
+            tmp_uth = UserToHosts(user_id=user_id,role_id=role_id,host_id=int(k))
+            db.session.add(tmp_uth)
+        else:
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+        return jsonify({"status":True})
+    except Exception as e:
+        return jsonify({"status":False,"message":str(e)})
 
 #用户登录申请token
 '''

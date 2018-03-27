@@ -26,8 +26,8 @@ class DevelopmentConfig(Config):
     MAIL_SERVER = 'smtp.miaozhen.com'
     MAIL_PORT = 25
     MAIL_USER_TLS = False
-    MAIL_USERNAME = '***'
-    MAIL_PASSWORD = '***'
+    #MAIL_USERNAME = ''
+    #MAIL_PASSWORD = ''
 
 config = {
     'development':DevelopmentConfig,
