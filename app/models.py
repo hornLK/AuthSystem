@@ -11,8 +11,14 @@ class UserToHosts(db.Model):
         用户与主机权限关系表
     '''
     __tablename__ = "usertohosts"
-    user_id = db.Column(db.Integer,db.ForeignKey("users.id"),primary_key=True)
-    host_id = db.Column(db.Integer,db.ForeignKey("hosts.id"),primary_key=True)
+    user_id = db.Column(db.Integer,db.ForeignKey("users.id",
+                                                 ondelete='CASCADE',
+                                                 onupdate='CASCADE'),
+                        primary_key=True)
+    host_id = db.Column(db.Integer,db.ForeignKey("hosts.id",
+                                                 ondelete='CASCADE',
+                                                 onupdate='CASCADE'),
+                        primary_key=True)
     role_id = db.Column(db.Integer,db.ForeignKey("roles.id"))
     hosts = db.relationship("Hosts",back_populates="users")
     users = db.relationship("User",back_populates="hosts")
@@ -27,7 +33,9 @@ class UserKey(db.Model):
     userPrikey = db.Column(db.String(256))
     #密钥更新时间
     keyUpdate = db.Column(db.DateTime)
-    user_id = db.Column(db.Integer,db.ForeignKey("users.id"))
+    user_id = db.Column(db.Integer,db.ForeignKey("users.id",
+                                                 ondelete='CASCADE',
+                                                 onupdate='CASCADE'))
     user = db.relationship("User",back_populates="userkey")
 
     def updateKey(self):
@@ -62,8 +70,11 @@ class User(UserMixin,db.Model):
     email = db.Column(db.String(64),unique=True,index=True,nullable=False)
     #用户名
     username = db.Column(db.String(64),unique=True,index=True,nullable=False)
+    #中文名
+    chinese = db.Column(db.String(64))
     #电话号码
     phonenumber = db.Column(db.Integer)
+    qqnumber = db.Column(db.Integer)
     #微信号
     weixinnumber = db.Column(db.String(32))
     #是否可以登录跳板机，默认为True
@@ -82,6 +93,7 @@ class User(UserMixin,db.Model):
             "id":self.id,
             "email":self.email,
             "username":self.username,
+            "chinese":self.chinese,
             "phonenumber":self.phonenumber,
             "weixinnumber":self.weixinnumber,
             "confirmed":self.confirmed,

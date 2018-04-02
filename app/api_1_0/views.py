@@ -6,7 +6,9 @@ from ..models import User,Hosts,Role,UserToHosts
 from . import api
 from flask_restful import Resource,reqparse
 from ..decorators import api_auth
+from ..utils.send_token import to_email,to_sms,to_weixin
 import json
+import datetime
 
 #获取用户列表
 @api.route('/auths/user/list/',methods=['GET'])
@@ -24,6 +26,8 @@ def ShowAllRoles():
     if roles:
         result = [role.to_json() for role in roles ]
         return jsonify(result)
+    else:
+        return jsonify([])
 #编辑用户信息
 @api.route('/auths/user/edit/',methods=['POST'])
 @api_auth(request)
@@ -34,14 +38,16 @@ def EditUsers():
             data["user_id"]=int(data.get("user_id"))
             data["confirmed"] = True if data["confirmed"] == "True" else False
             user_obj = User.query.get_or_404(data.get("user_id"))
-            user_obj.weixinnumber=int(data.get("weixinnumber"))
+            if data.get("weixinnumber"):
+                user_obj.weixinnumber=int(data.get("weixinnumber"))
             user_obj.confirmed = data.get("confirmed")
             db.session.add(user_obj)
             try:
                 db.session.commit()
-            except:
+                return jsonify({"status":True})
+            except Exception as e:
                 db.session.rollback()
-            return jsonify({"status":True})
+                return jsonify({"status":False,"message":str(e)})
         except Exception as e:
             print(e)
             return jsonify({"status":False,"message":str(e)})
@@ -81,6 +87,27 @@ def GetUserInfo():
             print(e)
             return jsonify({"message":str(e)}),404
 
+#去除用户主机权限
+@api.route('/auths/user/delhost/',methods=['POST'])
+@api_auth(request)
+def Deluserhost():
+    data = json.loads(request.data.decode("utf-8"))
+    try:
+        for host_id,user_id in data.items():
+            uth = UserToHosts.query.filter(and_(UserToHosts.user_id==int(user_id),
+                                    UserToHosts.host_id==int(host_id))).first()
+            db.session.delete(uth)
+        else:
+            try:
+                db.session.commit()
+                return jsonify({"status":True})
+            except:
+                db.session.rollback()
+    except Exception as e:
+        return jsonify({"status":False})
+
+
+
 #获取主机列表
 @api.route('/auths/host/list/',methods=['GET'])
 @api_auth(request)
@@ -89,6 +116,8 @@ def ShowAllHosts():
     if hosts:
         result=[host.to_json() for host in hosts]
         return jsonify(result)
+    else:
+        return jsonify({"status":False})
 
 #分页获取用户列表
 @api.route('/auths/user/page/list/',methods=['GET'])
@@ -146,8 +175,35 @@ def ShowPageHosts():
     except Exception as e:
         print(e)
         return jsonify({"status":False})
+
+#获取用户主机的角色
+@api.route('/auths/user/host/list/',methods=['GET'])
+@api_auth(request)
+def UserHostRole():
+    try:
+        username = request.args.get("username",None)
+        hostname = request.args.get("hostname",None)
+        hostip = request.args.get("ip",None)
+        if username is None:
+            raise ValueError("User no login")
+        user_id = User.query.filter_by(username=username).first().id
+        if hostname is None and hostip is None:
+            raise ValueError("Input hostname/ip")
+        if  hostname:
+            host_id = Hosts.query.filter_by(hostName=hostname).first().id
+        else:
+            host_id = Hosts.query.filter_by(hostIP=hostip).first().id
+        uth = UserToHosts.query.filter(and_(UserToHosts.user_id==user_id,
+                                        UserToHosts.host_id==host_id)).first()
+        role = uth.role.roleName
+        return jsonify({"status":True,"role":role})
+    except Exception as e:
+        print(e)
+        return jsonify({"status":False,"error":str(e)})
+
+
 #分页获取用户所有主机
-@api.route('/auths/user/hosts/page/list/')
+@api.route('/auths/user/hosts/page/list/',methods=['GET'])
 @api_auth(request)
 def ShowPageUserHosts():
     try:
@@ -184,8 +240,7 @@ def ShowPageUserOutHosts():
     try:
         user_id = request.args.get("user_id")
         page = request.args.get("page",1,type=int)
-        print(user_id)
-        pagination = Hosts.query.filter(Hosts.id.notin_([host.hosts.id  for host in
+        pagination = Hosts.query.order_by(Hosts.id).filter(Hosts.id.notin_([host.hosts.id  for host in
                                                          User.query.get(int(user_id)).hosts])).paginate(
             #page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],error_out=False
             page,per_page=3,error_out=False
@@ -245,14 +300,61 @@ return:
         ]
     }
 '''
+@api.route('/auths/user/create/',methods=['POST'])
+@api_auth(request)
+def AddLoginUser():
+    try:
+        data = json.loads(request.data.decode("utf-8"))
+        user = User(email=data.get("email"),
+                   username=data.get("username"),
+                   chinese=data.get("chinese"),
+                   phonenumber=data.get("phonenumber"),
+                   create_at=datetime.datetime.now())
+        user.userkey.userPubkey=data.get("pubKey")
+        user.userkey.userPrikey=data.get("priKey")
+        user.userkey.keyUpdate=datetime.datetime.now()
+        db.session.add(user)
+        try:
+            db.session.commit()
+            return jsonify({"message":"用户创建成功"})
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+            return jsonify({"status":False})
+    except Exception as e :
+        print(e)
+        return jsonify({"status":False})
+
 @api.route('/auths/login/apply/',methods=['POST'])
 @api_auth(request)
 def ApplyTokenHosts():
-    _,username=request.data.decode("utf-8").split("=")
-    userObj = User.query.filter_by(username=username).first()
-    result = userObj.generate_confirmation_token()
-    return jsonify({"token":result[0],"hosts":result[1]}) ,200
-
+    try:
+        data = json.loads(request.data.decode("utf-8"))
+        username = data.get("username",None)
+        channel = data.get("channel",0)
+        user = User.query.filter_by(username=username).first()
+        if user is None:
+            raise ValueError("User not found")
+        if not user.confirmed:
+            raise ValueError("No login permissions")
+        else:
+            result = user.generate_confirmation_token()
+            if int(channel) == 0:
+                to_email(user.email,result[0])
+            elif int(channel) == 1:
+                if not user.phonenumber:
+                    raise ValueError("telephone number is null")
+                else:
+                    to_sms(user.phonenumber,result[0])
+            elif int(channel) == 2:
+                if not user.weixinnumber:
+                    raise ValueError("weixin number is null")
+                else:
+                    to_weixin(user.weixinnumber,result[0])
+            return jsonify({"token":result[0],"hosts":result[1],"status":True}),200
+    except Exception as e:
+            print(e)
+            return jsonify({"error":str(e),"status":False}),200
 
 #测试api验证用例
 @api.route('/auths/test/authapi/',methods=['GET'])
