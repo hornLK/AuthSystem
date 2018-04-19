@@ -38,6 +38,9 @@ class UserKey(db.Model):
                                                  onupdate='CASCADE'))
     user = db.relationship("User",back_populates="userkey")
 
+    def __repr__(self):
+            return "<user-key:%s>" % self.user
+
     def updateKey(self):
         pass
 
@@ -80,7 +83,7 @@ class User(UserMixin,db.Model):
     #是否可以登录跳板机，默认为True
     confirmed = db.Column(db.Boolean,default=True)
     #用户key
-    userkey = db.relationship("UserKey",back_populates="user")
+    userkey = db.relationship("UserKey",back_populates="user",uselist=False)
     #用户创建时间
     create_at = db.Column(db.DateTime)
     #外键关联log表记录用户认证日志
@@ -177,6 +180,23 @@ class Hosts(db.Model):
     #关联到主机组
     hostGroup_id = db.Column(db.Integer,db.ForeignKey('hostgroup.id'))
     users = db.relationship("UserToHosts",back_populates="hosts")
+
+    @staticmethod
+    def init_hosts():
+        hosts= ["192.168.220.3","192.168.220.4","192.168.220.5",
+                "192.168.220.6","192.168.220.7","192.168.220.8",
+                "192.168.220.9","192.168.220.10","192.168.220.11"]
+        for ip in hosts:
+            hostname = "test"+ip.split(".")[-1]
+            if hosts.index(ip) < 2:
+                h=Hosts(**{"hostName":hostname,"hostIP":ip,"hostGroup_id":2})
+            h=Hosts(**{"hostName":hostname,"hostIP":ip,"hostGroup_id":1})
+            db.session.add(h)
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
+
     #主机信息
     def to_json(self):
         to_json={
@@ -222,6 +242,20 @@ class HostGroup(db.Model):
     #业务线描述
     moMent = db.Column(db.String(128))
     hosts = db.relationship("Hosts",backref="hostgroup")
+    @staticmethod
+    def init_hostgroup():
+        hostgroup = ["default","jumpserver"]
+        for hg in hostgroup:
+            hgg=HostGroup(produceName = hg)
+            if hg == "default":
+                hgg.moMent = "默认组"
+            if hg == "jumpserver":
+                hgg.moMent = "跳板机"
+            db.session.add(hgg)
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
 
     def updateName(self):
         pass
@@ -250,6 +284,16 @@ class Role(db.Model):
     #角色描述
     moMent = db.Column(db.String(128))
     userTohost = db.relationship("UserToHosts",backref='role')
+    @staticmethod
+    def init_role():
+        role_list = ["admin","ops"]
+        for r in role_list:
+            role = Role(roleName=r)
+            db.session.add(role)
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
 
     def updatePubKey():
         pass

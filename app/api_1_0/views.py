@@ -2,13 +2,15 @@ from flask_httpauth import HTTPBasicAuth
 from flask import jsonify,request,current_app,url_for
 from sqlalchemy import and_
 from .. import db
-from ..models import User,Hosts,Role,UserToHosts
+from ..models import User,Hosts,Role,UserToHosts,UserKey
 from . import api
 from flask_restful import Resource,reqparse
 from ..decorators import api_auth
 from ..utils.send_token import to_email,to_sms,to_weixin
+from ..utils.send_key import email_sendkey
 import json
 import datetime
+from ..utils.gener_userkeys import genrsa
 
 #获取用户列表
 @api.route('/auths/user/list/',methods=['GET'])
@@ -71,7 +73,22 @@ def EditUserRole():
         print(e)
         return jsonify({"status":False})
 
-
+#获取用户公钥
+@api.route('/auths/user/key/',methods=["GET"])
+@api_auth(request)
+def GetUserKey():
+    if request.method == "GET":
+        try:
+            username = request.args.get("username").strip()
+            user = User.query.filter_by(username=username).first()
+            dir(user)
+            pubkey = user.userkey.userPubkey
+            prikey = user.userkey.userPrikey
+            return jsonify({"status":True,"pubkey":pubkey,"prikey":prikey})
+        except Exception as e:
+            print(e)
+            return jsonify({"status":False,"error":str(e)})
+    return jsonify({"status":False,"error":"error request method"})
 
 #获取用户信息
 @api.route('/auths/user/info/',methods=['GET'])
@@ -126,8 +143,8 @@ def ShowPageUsers():
     try:
         page = request.args.get('page',1,type=int)
         pagination = User.query.paginate(
-            #page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],
-            page,per_page=1,
+            page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],
+            #page,per_page=1,
             error_out=False
         )
         users = pagination.items
@@ -210,8 +227,8 @@ def ShowPageUserHosts():
         user_id = request.args.get("user_id")
         page = request.args.get("page",1,type=int)
         pagination = UserToHosts.query.filter(UserToHosts.user_id==user_id).paginate(
-            #page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],error_out=False
-            page,per_page=1,error_out=False
+            page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],error_out=False
+            #page,per_page=1,error_out=False
         )
         user_hosts = pagination.items
         prev_page = None
@@ -242,8 +259,8 @@ def ShowPageUserOutHosts():
         page = request.args.get("page",1,type=int)
         pagination = Hosts.query.order_by(Hosts.id).filter(Hosts.id.notin_([host.hosts.id  for host in
                                                          User.query.get(int(user_id)).hosts])).paginate(
-            #page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],error_out=False
-            page,per_page=3,error_out=False
+            page,per_page=current_app.config["AUTHSYSTEM_MESSAGE_PAGE"],error_out=False
+            #page,per_page=3,error_out=False
         )
         out_hosts = pagination.items
         prev_page = None
@@ -305,25 +322,34 @@ return:
 def AddLoginUser():
     try:
         data = json.loads(request.data.decode("utf-8"))
+        old_user = User.query.filter_by(email=data.get("email",None)).first()
+        if old_user:
+            raise ValueError("用户已存在")
+        create_time=datetime.datetime.now()
+        pk = genrsa()
         user = User(email=data.get("email"),
                    username=data.get("username"),
                    chinese=data.get("chinese"),
                    phonenumber=data.get("phonenumber"),
-                   create_at=datetime.datetime.now())
-        user.userkey.userPubkey=data.get("pubKey")
-        user.userkey.userPrikey=data.get("priKey")
-        user.userkey.keyUpdate=datetime.datetime.now()
+                   create_at=create_time)
         db.session.add(user)
-        try:
-            db.session.commit()
-            return jsonify({"message":"用户创建成功"})
-        except Exception as e:
-            print(e)
-            db.session.rollback()
-            return jsonify({"status":False})
+        db.session.commit()
+        user  = User.query.filter_by(email=data.get("email")).first()
+        if not user:
+            raise ValueError("添加失败")
+        uk_dic = {"userPubkey":pk.get("pubKey").decode("utf-8"),
+                "userPrikey":pk.get("priKey").decode("utf-8"),
+                "keyUpdate":create_time,
+                "user_id":user.id}
+        uk = UserKey(**uk_dic)
+        db.session.add(uk)
+        db.session.commit()
+        email_sendkey(user.email,user.userkey.userPubkey,user.userkey.userPrikey)
+        return jsonify({"message":"用户创建成功","status":True})
     except Exception as e :
         print(e)
-        return jsonify({"status":False})
+        db.session.rollback()
+        return jsonify({"error":str(e),"status":False})
 
 @api.route('/auths/login/apply/',methods=['POST'])
 @api_auth(request)

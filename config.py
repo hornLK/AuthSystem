@@ -18,16 +18,9 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI ='sqlite:///' + os.path.join(basedir,'devdata.sqlite')
-
     AUTHSYSTEM_MAIL_SUBJECT_PREFIX = '[DevAuthSystem]'
-    FLASKY_ADMIN = 'liukaiqiang@miaozhen.com'
-    AUTHSYSTEM_MAIL_SENDER = 'AuthSystem Admin <liukaiqiang@miaozhen.com>'
     AUTHSYSTEM_MESSAGE_PAGE = 20
-    MAIL_SERVER = 'smtp.miaozhen.com'
-    MAIL_PORT = 25
-    MAIL_USER_TLS = False
-    #MAIL_USERNAME = ''
-    #MAIL_PASSWORD = ''
+    MAIL_API = 'http://127.0.0.1:7777/v1/alarm/send_mail'
 
 config = {
     'development':DevelopmentConfig,

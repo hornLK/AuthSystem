@@ -1,0 +1,5 @@
+---
+    - name: test roles
+      shell: ls /root
+    - name: echo user name
+      shell: echo {{ username }}
